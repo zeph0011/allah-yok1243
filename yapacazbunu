@@ -1,1 +1,226 @@
+local player = game:GetService("Players").LocalPlayer
+local camera = game:GetService("Workspace").CurrentCamera
+local runService = game:GetService("RunService")
+local userInput = game:GetService("UserInputService")
+local playerList = game:GetService("Players")
+local lighting = game:GetService("Lighting")
 
+local espEnabled = true
+local silentAimEnabled = true
+local adminPanelVisible = false
+local aimPart = "Head"
+local espTable = {}
+
+local function createESP(plr)
+if plr == player or espTable[plr] then return end
+local char = plr.Character
+if not char or not char.PrimaryPart then return end
+local gui = Instance.new("BillboardGui")
+gui.Name = "ESP_" .. plr.Name
+gui.Size = UDim2.new(0, 120, 0, 160)
+gui.StudsOffset = Vector3.new(0, 3, 0)
+gui.AlwaysOnTop = true
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundTransparency = 0.5
+frame.BackgroundColor3 = plr.Team and plr.Team.TeamColor.Color or Color3.new(0, 1, 0)
+frame.BorderSizePixel = 2
+frame.BorderColor3 = Color3.new(1, 1, 1)
+frame.Parent = gui
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(1, 0, 0.25, 0)
+nameLabel.Position = UDim2.new(0, 0, 0.75, 0)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Text = plr.Name
+nameLabel.TextColor3 = Color3.new(1, 1, 1)
+nameLabel.TextScaled = true
+nameLabel.Font = Enum.Font.SourceSansBold
+nameLabel.Parent = gui
+local healthBar = Instance.new("Frame")
+healthBar.Size = UDim2.new(1, 0, 0.1, 0)
+healthBar.Position = UDim2.new(0, 0, 0.65, 0)
+healthBar.BackgroundColor3 = Color3.new(1, 0, 0)
+healthBar.BorderSizePixel = 0
+healthBar.Parent = gui
+local healthFill = Instance.new("Frame")
+healthFill.Size = UDim2.new(1, 0, 1, 0)
+healthFill.BackgroundColor3 = Color3.new(0, 1, 0)
+healthFill.BorderSizePixel = 0
+healthFill.Parent = healthBar
+gui.Parent = char.PrimaryPart
+espTable[plr] = gui
+spawn(function()
+while gui and gui.Parent do
+task.wait(0.5)
+local humanoid = char:FindFirstChild("Humanoid")
+if humanoid then
+local h = humanoid.Health / humanoid.MaxHealth
+healthFill.Size = UDim2.new(h, 0, 1, 0)
+healthFill.BackgroundColor3 = h > 0.5 and Color3.new(0,1,0) or h > 0.25 and Color3.new(1,1,0) or Color3.new(1,0,0)
+end
+end
+end)
+end
+
+local function removeESP(plr)
+if espTable[plr] then espTable[plr]:Destroy() espTable[plr] = nil end
+end
+
+local function refreshESP()
+for plr in pairs(espTable) do
+if not plr.Parent or not plr.Character or not plr.Character.PrimaryPart then removeESP(plr) end
+end
+for _, plr in pairs(playerList:GetPlayers()) do
+if plr ~= player and not espTable[plr] then createESP(plr) end
+end
+end
+
+local function getClosestPlayer()
+local closest, closestDist = nil, math.huge
+local origin, dir = camera.CFrame.Position, camera.CFrame.LookVector
+for _, plr in pairs(playerList:GetPlayers()) do
+if plr ~= player and plr.Character and plr.Character.PrimaryPart then
+local pos = plr.Character.PrimaryPart.Position
+local sp, on = camera:WorldToScreenPoint(pos)
+if on then
+local dist = (pos - origin).Magnitude
+local vec = (pos - origin).Unit
+if dir:Dot(vec) > 0.85 and dist < closestDist then
+closest, closestDist = plr, dist
+end
+end
+end
+end
+return closest
+end
+
+local function silentAim()
+if not silentAimEnabled then return end
+local target = getClosestPlayer()
+if target and target.Character then
+local part = target.Character:FindFirstChild(aimPart) or target.Character.PrimaryPart
+if part then
+camera.CFrame = CFrame.new(camera.CFrame.Position, part.Position)
+end
+end
+end
+
+local function createAdminPanel()
+local sg = Instance.new("ScreenGui")
+sg.Name = "AdminPanel"
+sg.Parent = player.PlayerGui
+local mf = Instance.new("Frame")
+mf.Size = UDim2.new(0, 300, 0, 400)
+mf.Position = UDim2.new(0.5, -150, 0.5, -200)
+mf.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+mf.BackgroundTransparency = 0.2
+mf.BorderSizePixel = 2
+mf.BorderColor3 = Color3.new(1, 1, 1)
+mf.Visible = false
+mf.Parent = sg
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0.1, 0)
+title.BackgroundTransparency = 1
+title.Text = "ADMIN PANEL"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextScaled = true
+title.Font = Enum.Font.SourceSansBold
+title.Parent = mf
+local espBtn = Instance.new("TextButton")
+espBtn.Size = UDim2.new(0.8, 0, 0.1, 0)
+espBtn.Position = UDim2.new(0.1, 0, 0.15, 0)
+espBtn.BackgroundColor3 = Color3.new(0, 1, 0)
+espBtn.Text = "ESP: ACIK"
+espBtn.TextColor3 = Color3.new(0, 0, 0)
+espBtn.TextScaled = true
+espBtn.Font = Enum.Font.SourceSansBold
+espBtn.Parent = mf
+espBtn.MouseButton1Click:Connect(function()
+espEnabled = not espEnabled
+espBtn.Text = espEnabled and "ESP: ACIK" or "ESP: KAPALI"
+if espEnabled then refreshESP() else for p in pairs(espTable) do removeESP(p) end end
+end)
+local silentBtn = Instance.new("TextButton")
+silentBtn.Size = UDim2.new(0.8, 0, 0.1, 0)
+silentBtn.Position = UDim2.new(0.1, 0, 0.30, 0)
+silentBtn.BackgroundColor3 = Color3.new(0, 1, 0)
+silentBtn.Text = "SILENT AIM: ACIK"
+silentBtn.TextColor3 = Color3.new(0, 0, 0)
+silentBtn.TextScaled = true
+silentBtn.Font = Enum.Font.SourceSansBold
+silentBtn.Parent = mf
+silentBtn.MouseButton1Click:Connect(function()
+silentAimEnabled = not silentAimEnabled
+silentBtn.Text = silentAimEnabled and "SILENT AIM: ACIK" or "SILENT AIM: KAPALI"
+end)
+local aimLabel = Instance.new("TextLabel")
+aimLabel.Size = UDim2.new(0.4, 0, 0.08, 0)
+aimLabel.Position = UDim2.new(0.05, 0, 0.45, 0)
+aimLabel.BackgroundTransparency = 1
+aimLabel.Text = "Aim: " .. aimPart
+aimLabel.TextColor3 = Color3.new(1, 1, 1)
+aimLabel.TextScaled = true
+aimLabel.Font = Enum.Font.SourceSans
+aimLabel.Parent = mf
+local headBtn = Instance.new("TextButton")
+headBtn.Size = UDim2.new(0.2, 0, 0.08, 0)
+headBtn.Position = UDim2.new(0.5, 0, 0.45, 0)
+headBtn.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+headBtn.Text = "HEAD"
+headBtn.TextColor3 = Color3.new(1, 1, 1)
+headBtn.TextScaled = true
+headBtn.Font = Enum.Font.SourceSans
+headBtn.Parent = mf
+headBtn.MouseButton1Click:Connect(function() aimPart = "Head" aimLabel.Text = "Aim: Head" end)
+local partBtn = Instance.new("TextButton")
+partBtn.Size = UDim2.new(0.2, 0, 0.08, 0)
+partBtn.Position = UDim2.new(0.75, 0, 0.45, 0)
+partBtn.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+partBtn.Text = "PART"
+partBtn.TextColor3 = Color3.new(1, 1, 1)
+partBtn.TextScaled = true
+partBtn.Font = Enum.Font.SourceSans
+partBtn.Parent = mf
+partBtn.MouseButton1Click:Connect(function() aimPart = "Part" aimLabel.Text = "Aim: Part" end)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0.2, 0, 0.08, 0)
+closeBtn.Position = UDim2.new(0.8, 0, 0.9, 0)
+closeBtn.BackgroundColor3 = Color3.new(1, 0, 0)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.TextScaled = true
+closeBtn.Font = Enum.Font.SourceSansBold
+closeBtn.Parent = mf
+closeBtn.MouseButton1Click:Connect(function() mf.Visible = false adminPanelVisible = false end)
+userInput.InputBegan:Connect(function(input, isTyping)
+if isTyping then return end
+if input.KeyCode == Enum.KeyCode.Insert then
+adminPanelVisible = not adminPanelVisible
+mf.Visible = adminPanelVisible
+end
+end)
+end
+
+playerList.PlayerAdded:Connect(function(plr)
+plr.CharacterAdded:Connect(function(char)
+char:WaitForChild("PrimaryPart")
+task.wait(0.5)
+if espEnabled then createESP(plr) end
+end)
+end)
+playerList.PlayerRemoving:Connect(removeESP)
+
+runService.Heartbeat:Connect(function()
+if espEnabled then refreshESP() end
+if silentAimEnabled then silentAim() end
+end)
+
+lighting.Brightness = 2
+lighting.Ambient = Color3.new(1,1,1)
+lighting.OutdoorAmbient = Color3.new(1,1,1)
+
+task.wait(1)
+for _, plr in pairs(playerList:GetPlayers()) do
+if plr ~= player then createESP(plr) end
+end
+createAdminPanel()
